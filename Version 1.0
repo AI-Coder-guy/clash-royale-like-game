@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Clash Royale - Final Polished Version</title>
+<style>
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    background: #4b8bbe;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+}
+header {
+    text-align: center;
+    background: #222;
+    width: 100%;
+    padding: 15px;
+    font-size: 2rem;
+    color: gold;
+}
+#arena {
+    position: relative;
+    width: 600px;
+    height: 400px;
+    background: url('https://i.imgur.com/YgPFGgD.png') no-repeat center/cover; /* example arena background */
+    border: 4px solid gold;
+    margin: 20px 0;
+    overflow: hidden;
+}
+.lane {
+    position: absolute;
+    width: 100%;
+    height: 50%;
+    border-top: 2px dashed white;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.tower {
+    position: absolute;
+    width: 50px;
+    height: 100px;
+    background: red;
+    bottom: 0;
+    border: 2px solid gold;
+    transition: background 0.2s;
+}
+.tower.enemy {
+    background: blue;
+    top: 0;
+    bottom: auto;
+}
+.unit {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    transition: left 0.03s linear, top 0.03s linear;
+}
+.unit.knight { background: brown; }
+.unit.archer { background: purple; }
+.unit.giant { background: orange; }
+.unit.enemy.knight { background: darkred; }
+.unit.enemy.archer { background: darkviolet; }
+.unit.enemy.giant { background: darkorange; }
+.health-bar {
+    position: absolute;
+    width: 30px;
+    height: 5px;
+    background: limegreen;
+    top: -7px;
+    left: 0;
+    transition: width 0.2s;
+}
+.projectile {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: yellow;
+    box-shadow: 0 0 8px yellow;
+}
+.explosion {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: orange;
+    opacity: 0.7;
+    pointer-events: none;
+    animation: explode 0.3s ease-out forwards;
+}
+@keyframes explode {
+    0% {transform: scale(0); opacity: 0.7;}
+    100% {transform: scale(2); opacity: 0;}
+}
+.controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+button {
+    padding: 10px 15px;
+    background: gold;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+button:hover { background: darkorange; }
+#elixir-bar {
+    width: 600px;
+    height: 20px;
+    background: gray;
+    border: 2px solid gold;
+    margin-bottom: 10px;
+    position: relative;
+}
+#elixir-fill {
+    height: 100%;
+    width: 0%;
+    background: cyan;
+    transition: width 0.3s;
+}
+#scoreboard {
+    font-size: 1.2rem;
+    margin-bottom: 5px;
+}
+#message {
+    font-size: 1.5rem;
+    margin-top: 10px;
+    color: yellow;
+}
+</style>
+</head>
+<body>
+
+<header>Mini Clash Royale - Final Polished</header>
+
+<div id="scoreboard">Time: 0s | Player Damage: 0 | Enemy Damage: 0</div>
+<div id="elixir-bar">
+    <div id="elixir-fill"></div>
+</div>
+
+<div class="controls">
+    <button onclick="deployUnit('player','top','knight')">Knight Top (5)</button>
+    <button onclick="deployUnit('player','bottom','knight')">Knight Bottom (5)</button>
+    <button onclick="deployUnit('player','top','archer')">Archer Top (3)</button>
+    <button onclick="deployUnit('player','bottom','archer')">Archer Bottom (3)</button>
+    <button onclick="deployUnit('player','top','giant')">Giant Top (8)</button>
+    <button onclick="deployUnit('player','bottom','giant')">Giant Bottom (8)</button>
+</div>
+
+<div id="arena">
+    <div class="lane"></div>
+    <div class="tower player" id="playerTopTower" style="left:50px;"></div>
+    <div class="tower player" id="playerBottomTower" style="left:50px; bottom:auto; top:250px;"></div>
+    <div class="tower enemy" id="enemyTopTower" style="right:50px; top:0;"></div>
+    <div class="tower enemy" id="enemyBottomTower" style="right:50px; top:250px;"></div>
+</div>
+
+<div id="message"></div>
+
+<script>
+const arena = document.getElementById('arena');
+let units = [];
+let projectiles = [];
+const towerHealth = {playerTopTower:100,playerBottomTower:100,enemyTopTower:100,enemyBottomTower:100};
+const unitStats = {
+    knight: { health:40, damage:5, speed:2, range:10, type:'melee', cost:5 },
+    archer: { health:25, damage:4, speed:2, range:100, type:'ranged', cost:3 },
+    giant: { health:80, damage:10, speed:1, range:10, type:'melee', cost:8, splash:20 },
+};
+let elixir = 10, maxElixir = 10;
+function updateElixir(){ elixir=Math.min(elixir+1,maxElixir); document.getElementById('elixir-fill').style.width=(elixir/maxElixir*100)+'%'; }
+setInterval(updateElixir,1000);
+
+let gameTime=0, playerDamage=0, enemyDamage=0;
+function updateScoreboard(){document.getElementById('scoreboard').innerText=`Time: ${gameTime}s | Player Damage: ${playerDamage} | Enemy Damage: ${enemyDamage}`;}
+setInterval(()=>{ gameTime++; updateScoreboard(); },1000);
+
+function deployUnit(owner,lane,type){
+    if(owner==='player' && elixir<unitStats[type].cost) return;
+    if(owner==='player') elixir-=unitStats[type].cost;
+    const stats = unitStats[type];
+    const unit=document.createElement('div');
+    unit.className=`unit ${type} ${owner==='player'?'':'enemy'}`;
+    const healthBar=document.createElement('div'); healthBar.className='health-bar'; unit.appendChild(healthBar);
+    const unitObj={
+        element:unit, x:owner==='player'?100:520, y:lane==='top'?50:250,
+        owner, lane, type, health:stats.health, damage:stats.damage,
+        speed:stats.speed*(owner==='player'?1:-1), range:stats.range,
+        target:null, attackCooldown:0, splash:stats.splash||0
+    };
+    unit.style.left=unitObj.x+'px'; unit.style.top=unitObj.y+'px';
+    arena.appendChild(unit); units.push(unitObj);
+}
+
+function spawnProjectile(fromUnit,targetUnit){
+    const proj=document.createElement('div'); proj.className='projectile';
+    proj.style.left=fromUnit.x+11+'px'; proj.style.top=fromUnit.y+11+'px';
+    arena.appendChild(proj); projectiles.push({element:proj,from:fromUnit,target:targetUnit,speed:5});
+}
+
+function spawnExplosion(x,y){
+    const exp=document.createElement('div'); exp.className='explosion';
+    exp.style.left=x+'px'; exp.style.top=y+'px';
+    arena.appendChild(exp);
+    setTimeout(()=>exp.remove(),300);
+}
+
+function updateProjectiles(){
+    projectiles.forEach((p,i)=>{
+        const dx=p.target.x-p.from.x; const dy=p.target.y-p.from.y;
+        const dist=Math.sqrt(dx*dx+dy*dy); const moveX=(dx/dist)*p.speed; const moveY=(dy/dist)*p.speed;
+        p.element.style.left=parseFloat(p.element.style.left)+moveX+'px';
+        p.element.style.top=parseFloat(p.element.style.top)+moveY+'px';
+        if(rectOverlap(p.element.getBoundingClientRect(),p.target.element.getBoundingClientRect())){
+            p.target.health-=p.from.damage;
+            p.target.element.querySelector('.health-bar').style.width=p.target.health+'px';
+            spawnExplosion(p.target.x,p.target.y);
+            p.element.remove(); projectiles.splice(i,1);
+            if(p.target.health<=0){
+                if(p.target.splash){ units.forEach(u=>{if(u.owner!==p.target.owner && u.lane===p.target.lane && Math.abs(u.x-p.target.x)<30){u.health-=p.target.splash; u.element.querySelector('.health-bar').style.width=u.health+'px'; if(u.health<=0){u.element.remove(); units.splice(units.indexOf(u),1);}}});}
+                p.target.element.remove(); units.splice(units.indexOf(p.target),1);
+            }
+        }
+    });
+}
+
+function gameLoop(){
+    updateProjectiles();
+    // Tower attacks
+    ['playerTopTower','playerBottomTower','enemyTopTower','enemyBottomTower'].forEach(tid=>{
+        const tower=document.getElementById(tid); if(!tower) return;
+        const tOwner=tid.includes('enemy')?'enemy':'player'; const lane=tid.includes('Top')?'top':'bottom';
+        const targets=units.filter(u=>u.owner!==tOwner && u.lane===lane);
+        if(targets.length>0 && Math.random()<0.02){ spawnProjectile({x:tOwner==='player'?tower.offsetLeft+tower.offsetWidth:tOwner==='enemy'?tower.offsetLeft-5:tower.offsetLeft,y:tower.offsetTop},targets[0]); }
+    });
+
+    for(let i=0;i<units.length;i++){
+        const u=units[i]; if(u.attackCooldown>0) u.attackCooldown--;
+        if(!u.target){ let potentialTargets=units.filter(e=>e.owner!==u.owner && e.lane===u.lane); let nearest=null; let minDist=Infinity; potentialTargets.forEach(t=>{ const dist=Math.abs(u.x-t.x); if(dist<minDist && dist<=u.range){nearest=t; minDist=dist;}}); u.target=nearest;}
+        if(u.target && u.attackCooldown<=0){
+            if(u.type==='archer'){ spawnProjectile(u,u.target); } else { u.target.health-=u.damage; u.target.element.querySelector('.health-bar').style.width=u.target.health+'px'; spawnExplosion(u.target.x,u.target.y); if(u.target.health<=0){ u.target.element.remove(); units.splice(units.indexOf(u.target),1); u.target=null;}}
+            u.attackCooldown=30;
+        }
+        if(!u.target){ u.x+=u.speed; u.element.style.left=u.x+'px';}
+        const towerId=u.owner==='player'?'enemy'+capitalize(u.lane)+'Tower':'player'+capitalize(u.lane)+'Tower';
+        const tower=document.getElementById(towerId);
+        if(tower && rectOverlap(u.element.getBoundingClientRect(),tower.getBoundingClientRect())){
+            towerHealth[towerId]-=u.damage;
+            if(u.owner==='player') playerDamage+=u.damage; else enemyDamage+=u.damage;
+            updateScoreboard(); u.health-=u.damage; u.element.remove(); units.splice(i,1); i--;
+            if(towerHealth[towerId]<=0){ tower.remove(); endGame(u.owner); return;}
+        }
+        if(u.x>arena.clientWidth || u.x<-30){ u.element.remove(); units.splice(i,1); i--;}
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+function rectOverlap(r1,r2){return !(r2.left>r1.right||r2.right<r1.left||r2.top>r1.bottom||r2.bottom<r1.top);}
+function capitalize(s){return s.charAt(0).toUpperCase()+s.slice(1);}
+
+setInterval(()=>{ if(document.getElementById('enemyTopTower')) deployUnit('enemy','top',randomUnit()); if(document.getElementById('enemyBottomTower')) deployUnit('enemy','bottom',randomUnit()); },3000);
+function randomUnit(){const keys=Object.keys(unitStats); return keys[Math.floor(Math.random()*keys.length)];}
+
+function endGame(winner){document.getElementById('message').innerText=winner+' wins!'; units.forEach(u=>u.element.remove()); units=[]; projectiles.forEach(p=>p.element.remove()); projectiles=[]; setTimeout(()=>{location.reload();},3000);}
+
+gameLoop();
+</script>
+
+</body>
+</html>
