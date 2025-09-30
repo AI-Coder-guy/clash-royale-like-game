@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Mini Clash Royale with Lanes - Towers Fixed</title>
+<title>Mini Clash Royale - Unit Attack Animations</title>
 <style>
 body { margin:0; background:#222; display:flex; flex-direction:column; align-items:center; }
 canvas { background:linear-gradient(to bottom,#4caf50,#2e7d32); border:4px solid #000; margin-top:10px; }
@@ -16,7 +16,7 @@ button:hover { transform:scale(1.05); }
 </head>
 <body>
 
-<h1 style="color:white;">Mini Clash Royale with Lanes - Towers Fixed</h1>
+<h1 style="color:white;">Mini Clash Royale - Unit Attack Animations</h1>
 <div id="ui">
   <button onclick="spawnUnit('knight',0)">Knight Top (3)</button>
   <button onclick="spawnUnit('archer',1)">Archer Mid (2)</button>
@@ -105,7 +105,6 @@ function gameLoop(){
 
   // Units logic (lane-specific)
   units.forEach(u=>{
-    // Only target enemies in same lane
     let targets=units.filter(v=>v.isEnemy!==u.isEnemy && v.lane===u.lane);
     let target=null; let minDist=Infinity;
     for(let v of targets){
@@ -116,13 +115,13 @@ function gameLoop(){
     if(!target){
       let towerTargets=towers.filter(t=>t.isEnemy!==u.isEnemy && t.lane===u.lane);
       for(let t of towerTargets){
-        const d=Math.abs(u.x-t.x); // Horizontal distance for towers
+        const d=Math.abs(u.x-t.x);
         if(d<minDist){ minDist=d; minDist=d; target=t; }
       }
     }
 
     if(target){
-      let inRange = false;
+      let inRange=false;
       if(target.type==="king" || target.type==="princess"){ // Tower
         inRange = Math.abs(u.x - target.x) <= u.range;
       } else { // Unit
@@ -130,14 +129,34 @@ function gameLoop(){
       }
 
       if(inRange){
+        // Dynamic attack animations per unit type
+        if(u.type==="knight"){
+          ctx.strokeStyle="red"; ctx.lineWidth=2;
+          ctx.beginPath();
+          ctx.moveTo(u.x,u.y);
+          ctx.arc(u.x,u.y,15,Math.PI*0.25,Math.PI*0.75);
+          ctx.stroke();
+        }
+        if(u.type==="giant"){
+          ctx.fillStyle="rgba(255,0,0,0.5)";
+          ctx.fillRect(target.x-15,target.y-15,30,30); // Smash effect
+        }
         if(u.type==="archer"){
           if(Math.random()<0.05) projectiles.push({x:u.x,y:u.y,target,dmg:u.atk,color:"yellow"});
-        } else target.hp -= 0.1*u.atk;
+        }
+
+        if(u.type!=="archer") target.hp -= 0.1*u.atk;
       } else {
         const direction = u.isEnemy ? -1 : 1;
         u.x += u.speed * direction;
       }
     }
+
+    // Draw unit
+    ctx.fillStyle=u.color;
+    ctx.beginPath(); ctx.arc(u.x,u.y,15,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="red"; ctx.fillRect(u.x-20,u.y-25,40,5);
+    ctx.fillStyle="lime"; ctx.fillRect(u.x-20,u.y-25,40*(u.hp/u.maxHp),5);
   });
 
   // Remove dead units
