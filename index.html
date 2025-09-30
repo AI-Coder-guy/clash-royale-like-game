@@ -1,236 +1,149 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Clash Royale Style Game</title>
-  <style>
-    body {
-      margin: 0;
-      background: #222;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    canvas {
-      background: linear-gradient(to bottom, #4caf50, #2e7d32);
-      border: 4px solid #000;
-      border-radius: 12px;
-      margin-top: 10px;
-    }
-    #ui {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin: 10px;
-    }
-    button {
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      background: #eee;
-      font-weight: bold;
-      transition: transform 0.1s;
-    }
-    button:hover { transform: scale(1.05); }
-    #elixirBar {
-      width: 300px;
-      height: 20px;
-      background: #555;
-      border-radius: 10px;
-      overflow: hidden;
-      margin: 10px auto;
-    }
-    #elixir { height: 100%; width: 0%; background: linear-gradient(to right, #673ab7, #9c27b0); transition: width 0.2s; }
-    #overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.8);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 48px;
-      font-weight: bold;
-      visibility: hidden;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Clash Royale Mini</title>
+<style>
+  body { margin:0; background:#222; display:flex; flex-direction:column; align-items:center; }
+  canvas { background:linear-gradient(to bottom,#4caf50,#2e7d32); border:4px solid #000; margin-top:10px; }
+  #ui { display:flex; gap:10px; margin:10px; }
+  button { padding:10px 20px; border-radius:8px; border:none; cursor:pointer; background:#eee; font-weight:bold; }
+  button:hover { transform:scale(1.05); }
+  #elixirBar { width:300px; height:20px; background:#555; border-radius:10px; overflow:hidden; margin:10px auto; }
+  #elixir { height:100%; width:0%; background:linear-gradient(to right,#673ab7,#9c27b0); transition:width 0.2s; }
+  #overlay { position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); color:white; display:flex; align-items:center; justify-content:center; font-size:48px; font-weight:bold; visibility:hidden; }
+</style>
 </head>
 <body>
-  <h1 style="color:white;">Mini Clash Royale</h1>
-  <div id="ui">
-    <button onclick="spawnUnit('knight')">Knight (3)</button>
-    <button onclick="spawnUnit('archer')">Archer (2)</button>
-    <button onclick="spawnUnit('giant')">Giant (5)</button>
-  </div>
-  <div id="elixirBar"><div id="elixir"></div></div>
-  <canvas id="gameCanvas" width="800" height="600"></canvas>
-  <div id="overlay"></div>
 
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const overlay = document.getElementById("overlay");
+<h1 style="color:white;">Mini Clash Royale</h1>
+<div id="ui">
+  <button onclick="spawnUnit('knight')">Knight (3)</button>
+  <button onclick="spawnUnit('archer')">Archer (2)</button>
+  <button onclick="spawnUnit('giant')">Giant (5)</button>
+</div>
+<div id="elixirBar"><div id="elixir"></div></div>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<div id="overlay"></div>
 
-    // Game State
-    let units = [];
-    let projectiles = [];
-    let towers = [];
-    let gameOver = false;
+<script>
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+const overlay=document.getElementById('overlay');
 
-    // Elixir system
-    let elixir = 5, enemyElixir = 5;
-    const maxElixir = 10;
-    setInterval(() => {
-      if (!gameOver) {
-        if (elixir < maxElixir) elixir++;
-        if (enemyElixir < maxElixir) enemyElixir++;
-        updateElixirBar();
-      }
-    }, 1000);
-    function updateElixirBar() {
-      document.getElementById("elixir").style.width = (elixir / maxElixir) * 100 + "%";
+let units=[];
+let projectiles=[];
+let towers=[];
+let gameOver=false;
+
+let elixir=5, enemyElixir=5;
+const maxElixir=10;
+
+setInterval(()=>{
+  if(!gameOver){
+    if(elixir<maxElixir) elixir++;
+    if(enemyElixir<maxElixir) enemyElixir++;
+    document.getElementById('elixir').style.width=(elixir/maxElixir*100)+'%';
+  }
+},1000);
+
+const unitTypes={
+  knight:{hp:100,atk:10,range:20,speed:1.2,cost:3,color:"blue",type:"melee"},
+  archer:{hp:60,atk:8,range:120,speed:1,cost:2,color:"purple",type:"ranged"},
+  giant:{hp:200,atk:20,range:20,speed:0.6,cost:5,color:"orange",type:"melee"}
+};
+
+function spawnUnit(type,isEnemy=false){
+  const u=unitTypes[type];
+  if(!u) return;
+  if(!isEnemy && elixir<u.cost) return;
+  if(isEnemy && enemyElixir<u.cost) return;
+
+  if(!isEnemy) elixir-=u.cost;
+  else enemyElixir-=u.cost;
+
+  units.push({
+    ...u,
+    x:isEnemy?canvas.width-80:80,
+    y:canvas.height/2+Math.random()*200-100,
+    isEnemy
+  });
+}
+
+// Enemy AI
+setInterval(()=>{
+  if(!gameOver && enemyElixir>=2+Math.random()*4){
+    const choice=["knight","archer","giant"][Math.floor(Math.random()*3)];
+    spawnUnit(choice,true);
+  }
+},2000);
+
+// Towers
+towers=[
+  {x:60,y:200,hp:150,isEnemy:false,type:"princess"},
+  {x:60,y:400,hp:150,isEnemy:false,type:"princess"},
+  {x:740,y:200,hp:150,isEnemy:true,type:"princess"},
+  {x:740,y:400,hp:150,isEnemy:true,type:"princess"}
+];
+
+function gameLoop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle="white"; ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw towers
+  towers.forEach(t=>{
+    ctx.fillStyle=t.isEnemy?"red":"blue";
+    ctx.fillRect(t.x-15,t.y-30,30,60);
+    ctx.fillStyle="red"; ctx.fillRect(t.x-20,t.y-45,40,5);
+    ctx.fillStyle="lime"; ctx.fillRect(t.x-20,t.y-45,40*(t.hp/150),5);
+  });
+
+  // Update units
+  units.forEach(u=>{
+    // Move only if no target
+    let targets=units.filter(v=>v.isEnemy!==u.isEnemy);
+    // For melee units, find closest enemy
+    let target=null; let dist=Infinity;
+    targets.forEach(v=>{
+      const d=Math.hypot(u.x-v.x,u.y-v.y);
+      if(d<dist) {dist=d; target=v;}
+    });
+
+    // Attack logic
+    if(target && dist<=u.range){
+      target.hp-=0.05*u.atk;
+    } else if(u.type==="melee" || u.type==="giant"){
+      u.x+=u.speed;
+    } else if(u.type==="archer" && target){
+      // Shoot projectile
+      projectiles.push({x:u.x,y:u.y,target,dmg:u.atk,color:"yellow"});
     }
 
-    // Unit Types
-    const unitTypes = {
-      knight: { hp: 100, atk: 10, range: 20, speed: 1.2, cost: 3, color: "blue" },
-      archer: { hp: 60, atk: 8, range: 120, speed: 1, cost: 2, color: "purple" },
-      giant: { hp: 200, atk: 20, range: 20, speed: 0.6, cost: 5, color: "orange" }
-    };
+    // Draw unit
+    ctx.fillStyle=u.color;
+    ctx.beginPath(); ctx.arc(u.x,u.y,15,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="red"; ctx.fillRect(u.x-20,u.y-25,40,5);
+    ctx.fillStyle="lime"; ctx.fillRect(u.x-20,u.y-25,40*(u.hp/u.maxHp),5);
+  });
 
-    // Spawn Unit
-    function spawnUnit(type, isEnemy = false) {
-      const u = unitTypes[type];
-      if (!u) return;
-      if (!isEnemy && elixir < u.cost) return;
-      if (isEnemy && enemyElixir < u.cost) return;
+  // Remove dead units
+  units=units.filter(u=>u.hp>0);
 
-      if (!isEnemy) elixir -= u.cost;
-      else enemyElixir -= u.cost;
-
-      units.push({
-        type, hp: u.hp, maxHp: u.hp, atk: u.atk, range: u.range, speed: u.speed * (isEnemy ? -1 : 1),
-        x: isEnemy ? canvas.width - 80 : 80,
-        y: canvas.height/2 + (Math.random()*200 - 100),
-        color: u.color, isEnemy
-      });
-      updateElixirBar();
+  // Projectiles
+  projectiles.forEach((p,i)=>{
+    const dx=p.target.x-p.x, dy=p.target.y-p.y;
+    const d=Math.hypot(dx,dy);
+    if(d<5){ p.target.hp-=p.dmg; projectiles.splice(i,1); }
+    else { p.x+=dx/d*5; p.y+=dy/d*5;
+      ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill();
     }
+  });
 
-    // Enemy AI
-    setInterval(() => {
-      if (!gameOver && enemyElixir >= 2 + Math.random() * 4) {
-        const choice = ["knight","archer","giant"][Math.floor(Math.random()*3)];
-        spawnUnit(choice, true);
-      }
-    }, 2000);
-
-    // Towers
-    function createTowers() {
-      towers = [
-        {x:60,y:200,hp:150,isEnemy:false,type:"princess"},
-        {x:60,y:400,hp:150,isEnemy:false,type:"princess"},
-        {x:40,y:300,hp:300,isEnemy:false,type:"king"},
-        {x:740,y:200,hp:150,isEnemy:true,type:"princess"},
-        {x:740,y:400,hp:150,isEnemy:true,type:"princess"},
-        {x:760,y:300,hp:300,isEnemy:true,type:"king"},
-      ];
-    }
-    createTowers();
-
-    // Game Loop
-    function gameLoop() {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-
-      // Draw divider
-      ctx.strokeStyle="white"; ctx.setLineDash([5,5]);
-      ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Towers
-      towers.forEach(t=>{
-        // Draw tower
-        ctx.fillStyle=t.isEnemy?"red":"blue";
-        ctx.fillRect(t.x-15,t.y-30,30,60);
-        // Health bar
-        ctx.fillStyle="red"; ctx.fillRect(t.x-20,t.y-45,40,5);
-        ctx.fillStyle="lime"; ctx.fillRect(t.x-20,t.y-45,40*(t.hp/(t.type=="king"?300:150)),5);
-
-        // Attack nearby units
-        if (!gameOver) {
-          let targets=units.filter(u=>u.isEnemy!==t.isEnemy);
-          let closest=null; let closestDist=Infinity;
-          for (let u of targets) {
-            let d=Math.hypot(u.x-t.x,u.y-t.y);
-            if (d<150 && d<closestDist){closest=u;closestDist=d;}
-          }
-          if (closest && Math.random()<0.03){
-            projectiles.push({x:t.x,y:t.y,target:closest,dmg:10,color:"cyan"});
-          }
-        }
-      });
-
-      // Units
-      units.forEach(u=>{
-        if (!gameOver) u.x+=u.speed;
-        // Find target
-        let targets=[...units.filter(v=>v.isEnemy!==u.isEnemy),...towers.filter(t=>t.isEnemy!==u.isEnemy)];
-        let closest=null; let closestDist=Infinity;
-        for (let t of targets){
-          let d=Math.hypot(u.x-t.x,u.y-t.y);
-          if (d<closestDist){closest=t;closestDist=d;}
-        }
-        if (closest && closestDist<=u.range){
-          if (u.type==="archer" && Math.random()<0.05){
-            projectiles.push({x:u.x,y:u.y,target:closest,dmg:u.atk,color:"yellow"});
-          } else {
-            closest.hp-=0.05*u.atk;
-          }
-        }
-        // Draw
-        ctx.fillStyle=u.color;
-        ctx.beginPath(); ctx.arc(u.x,u.y,15,0,Math.PI*2); ctx.fill();
-        ctx.fillStyle="red"; ctx.fillRect(u.x-20,u.y-25,40,5);
-        ctx.fillStyle="lime"; ctx.fillRect(u.x-20,u.y-25,40*(u.hp/u.maxHp),5);
-      });
-
-      // Remove dead
-      units=units.filter(u=>u.hp>0);
-      towers=towers.filter(t=>t.hp>0);
-
-      // Projectiles
-      projectiles.forEach((p,i)=>{
-        let dx=p.target.x-p.x, dy=p.target.y-p.y;
-        let dist=Math.hypot(dx,dy);
-        if (dist<5){
-          p.target.hp-=p.dmg;
-          projectiles.splice(i,1);
-        } else {
-          p.x+=dx/dist*5; p.y+=dy/dist*5;
-          ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,4,0,Math.PI*2); ctx.fill();
-        }
-      });
-
-      // Win/Lose check
-      let playerKing=towers.find(t=>t.type==="king" && !t.isEnemy);
-      let enemyKing=towers.find(t=>t.type==="king" && t.isEnemy);
-      if (!gameOver && (!playerKing || playerKing.hp<=0)) {
-        endGame("You Lose 💀");
-      }
-      if (!gameOver && (!enemyKing || enemyKing.hp<=0)) {
-        endGame("You Win 🎉");
-      }
-
-      if (!gameOver) requestAnimationFrame(gameLoop);
-    }
-    gameLoop();
-
-    function endGame(msg){
-      gameOver=true;
-      overlay.innerText=msg;
-      overlay.style.visibility="visible";
-    }
-  </script>
+  if(!gameOver) requestAnimationFrame(gameLoop);
+}
+gameLoop();
+</script>
 </body>
 </html>
